@@ -1,0 +1,17 @@
+{
+  "name": "claude-workflow-plugins",
+  "description": "Personal Claude Code workflow plugins: discuss (design discussion mode) and orchestrate (orchestrator mode for expensive main models).",
+  "owner": { "name": "Mahito TANNO" },
+  "plugins": [
+    {
+      "name": "discuss",
+      "source": "./plugins/discuss",
+      "description": "Design discussion mode: /discuss blocks file edits via a lock file and a bundled PreToolUse hook; /discuss end summarizes outcomes and stops at the junction for the user to choose the next step."
+    },
+    {
+      "name": "orchestrate",
+      "source": "./plugins/orchestrate",
+      "description": "Orchestrator mode for expensive main models: keep planning, verification, and commits in the main session and delegate implementation to the bundled implementer subagent."
+    }
+  ]
+}
