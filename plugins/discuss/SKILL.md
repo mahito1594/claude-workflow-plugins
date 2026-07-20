@@ -1,18 +1,25 @@
 ---
 name: discuss
-description: "Enter or exit design discussion mode. /discuss starts a focused design conversation that blocks file edits via a lock file (${TMPDIR:-/tmp}/discuss-$CLAUDE_CODE_SESSION_ID.lock). /discuss end removes the lock, summarizes the outcomes, and stops at the junction so the user chooses the next step (plan mode, model switch, orchestrate, handoff, record-only, or park). Trigger on: /discuss, 'start discussion', 'design discussion', /discuss end, 'end discussion', 'exit discussion mode'."
+description: "Enter or exit design discussion mode. /discuss starts a focused design conversation that blocks file edits via a lock file (<project root>/.claude/discuss-$CLAUDE_CODE_SESSION_ID.lock). /discuss end removes the lock, summarizes the outcomes, and stops at the junction so the user chooses the next step (plan mode, model switch, orchestrate, handoff, record-only, or park). Trigger on: /discuss, 'start discussion', 'design discussion', /discuss end, 'end discussion', 'exit discussion mode'."
 ---
 
 # Discussion Mode
 
-State is tracked via a lock file (`${TMPDIR:-/tmp}/discuss-$CLAUDE_CODE_SESSION_ID.lock`). The `PreToolUse` hook bundled with this plugin reads it and blocks `Edit`/`Write` calls while the file exists. The hook matches only those two tools: file writes through other routes (Bash redirection, `sed -i`, heredocs, NotebookEdit) are not blocked mechanically — avoid them yourself while the lock exists. Code snippets in the conversation are fine for illustration — only file writes are off-limits.
+State is tracked via a lock file at `<project root>/.claude/discuss-$CLAUDE_CODE_SESSION_ID.lock`, where project root is resolved as `git rev-parse --show-toplevel` falling back to `pwd`. Do NOT place the lock under `$TMPDIR`: sandboxed Bash commands and hook commands resolve `$TMPDIR` to different directories by design, so a TMPDIR-based lock is invisible to the hook. The `PreToolUse` hook bundled with this plugin reads the lock (checking both `$CLAUDE_PROJECT_DIR` and the git-toplevel of its own cwd) and blocks `Edit`/`Write` calls while the file exists. The hook matches only those two tools: file writes through other routes (Bash redirection, `sed -i`, heredocs, NotebookEdit) are not blocked mechanically — avoid them yourself while the lock exists. Code snippets in the conversation are fine for illustration — only file writes are off-limits.
 
 ## `/discuss [topic]` — Enter discussion mode
 
 1. If the lock file already exists, discussion mode is already active: keep the running record and treat any new `[topic]` as a topic shift, not a fresh start. Otherwise create the lock file and confirm it exists:
 
 ```bash
-mkdir -p "${TMPDIR:-/tmp}" && touch "${TMPDIR:-/tmp}/discuss-$CLAUDE_CODE_SESSION_ID.lock" && test -f "${TMPDIR:-/tmp}/discuss-$CLAUDE_CODE_SESSION_ID.lock"
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+mkdir -p "$ROOT/.claude" && touch "$ROOT/.claude/discuss-$CLAUDE_CODE_SESSION_ID.lock"
+if GITDIR="$(git -C "$ROOT" rev-parse --git-common-dir 2>/dev/null)"; then
+  case "$GITDIR" in /*) ;; *) GITDIR="$ROOT/$GITDIR" ;; esac
+  mkdir -p "$GITDIR/info"
+  grep -qxF '.claude/discuss-*.lock' "$GITDIR/info/exclude" 2>/dev/null || echo '.claude/discuss-*.lock' >> "$GITDIR/info/exclude"
+fi
+test -f "$ROOT/.claude/discuss-$CLAUDE_CODE_SESSION_ID.lock"
 ```
 
 2. Announce that discussion mode is now active and file edits are blocked. If the lock could not be created, announce instead that the hook protection is NOT active and edits are held off by convention only.
@@ -38,7 +45,7 @@ mkdir -p "${TMPDIR:-/tmp}" && touch "${TMPDIR:-/tmp}/discuss-$CLAUDE_CODE_SESSIO
 2. Remove the lock file:
 
 ```bash
-rm -f "${TMPDIR:-/tmp}/discuss-$CLAUDE_CODE_SESSION_ID.lock"
+rm -f "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/discuss-$CLAUDE_CODE_SESSION_ID.lock"
 ```
 
 3. State the junction and stop. Do NOT call EnterPlanMode yourself: entering plan mode locks the current model in as the planner, and switching models is a user action. Whether to plan and which model plans are independent choices, so lay out the options and let the user pick:
