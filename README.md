@@ -1,18 +1,18 @@
-# claude-workflow-plugins
+# pb-cc-plugins
 
 A Claude Code plugin marketplace distributing two workflow plugins: `discuss` and `orchestrate`.
 
 ## Add the marketplace
 
 ```
-/plugin marketplace add mahito1594/claude-workflow-plugins
+/plugin marketplace add mahito1594/pb-cc-plugins
 ```
 
 ## Install a plugin
 
 ```
-/plugin install discuss@claude-workflow-plugins
-/plugin install orchestrate@claude-workflow-plugins
+/plugin install discuss@pb-cc-plugins
+/plugin install orchestrate@pb-cc-plugins
 ```
 
 ## Plugins

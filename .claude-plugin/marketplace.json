@@ -1,5 +1,5 @@
 {
-  "name": "claude-workflow-plugins",
+  "name": "pb-cc-plugins",
   "description": "Personal Claude Code workflow plugins: discuss (design discussion mode) and orchestrate (orchestrator mode for expensive main models).",
   "owner": { "name": "Mahito TANNO" },
   "plugins": [
