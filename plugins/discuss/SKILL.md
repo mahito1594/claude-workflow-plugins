@@ -7,6 +7,11 @@ description: "Enter or exit design discussion mode. /discuss starts a focused de
 
 State is tracked via a lock file at `<project root>/.claude/discuss-$CLAUDE_CODE_SESSION_ID.lock`, where project root is resolved as `git rev-parse --show-toplevel` falling back to `pwd`. Do NOT place the lock under `$TMPDIR`: sandboxed Bash commands and hook commands resolve `$TMPDIR` to different directories by design, so a TMPDIR-based lock is invisible to the hook. The `PreToolUse` hook bundled with this plugin reads the lock (checking both `$CLAUDE_PROJECT_DIR` and the git-toplevel of its own cwd) and blocks `Edit`/`Write` calls while the file exists. The hook matches only those two tools: file writes through other routes (Bash redirection, `sed -i`, heredocs, NotebookEdit) are not blocked mechanically — avoid them yourself while the lock exists. Code snippets in the conversation are fine for illustration — only file writes are off-limits.
 
+## Lock file discipline
+
+- The lock file is created by `/discuss` and removed by step 2 of `/discuss end`. Nothing justifies removing it anywhere else — not believing the discussion has concluded, not wanting to edit files, not finishing delegated research, and not any reason unlisted here.
+- `/discuss end` runs only when the user explicitly invokes it or asks to end the discussion in their own words ("これで議論は終わり", "wrap up the discussion"). A request to implement, apply, or "go ahead with" the design is NOT an end request — the outcome still needs its junction step. In every such case, propose that the user run `/discuss end`, then wait for their answer.
+
 ## `/discuss [topic]` — Enter discussion mode
 
 1. If the lock file already exists, discussion mode is already active: keep the running record and treat any new `[topic]` as a topic shift, not a fresh start. Otherwise create the lock file and confirm it exists:
@@ -42,7 +47,7 @@ test -f "$ROOT/.claude/discuss-$CLAUDE_CODE_SESSION_ID.lock"
 ## `/discuss end` — Exit discussion mode
 
 1. If the lock file does not exist, say that no discussion mode is active and stop — do not force a summary onto an ordinary conversation. Otherwise summarize the discussion first: decisions / rejected alternatives (with reasons) / open questions. Flag any decision with lasting consequences as an ADR draft candidate.
-2. Remove the lock file:
+2. Remove the lock file (see Lock file discipline — this is the only place it is removed):
 
 ```bash
 rm -f "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.claude/discuss-$CLAUDE_CODE_SESSION_ID.lock"
